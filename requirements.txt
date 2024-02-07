@@ -1,2 +1,3 @@
-azure-functions
 fastapi
+asyncpg
+python-dotenv
