@@ -49,6 +49,11 @@ async def get_connection():
                                  database=os.getenv('PGDATABASE'), host=os.getenv('PGHOST'))
 
 
+@app.get("/")
+async def read_root():
+    return {"message": "FastAPI application is running"}
+
+
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
                          limit: Optional[int] = Query(10, le=100), api_key: str = Depends(verify_api_key)):
