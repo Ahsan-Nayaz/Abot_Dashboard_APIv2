@@ -18,6 +18,23 @@ API_KEYS = {
 
 
 def verify_api_key(api_key: str = Header(None)):
+    """
+    Verify the API key.
+
+    Args:
+        api_key (str, optional): The API key to verify. Defaults to None.
+
+    Returns:
+        str: The verified API key.
+
+    Raises:
+        HTTPException: If the API key is invalid.
+
+    Example:
+        >>> verify_api_key(api_key="abc123")
+        "abc123"
+    """
+
     if api_key is None or api_key not in API_KEYS.values():
         raise HTTPException(status_code=403, detail="Invalid API key")
     return api_key
@@ -45,12 +62,14 @@ class ChatRecord(BaseModel):
 
 
 async def get_connection():
+
     return await asyncpg.connect(user=os.getenv('PGUSER'), password=os.getenv('PGPASSWORD'),
                                  database=os.getenv('PGDATABASE'), host=os.getenv('PGHOST'))
 
 
 @app.get("/")
-async def read_root():
+async def health_check():
+
     return {"message": "FastAPI application is running"}
 
 
@@ -81,7 +100,7 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
 
 
 @app.get("/session/{id}")
-async def get_session_by_id(id: UUID, api_key: str = Depends(verify_api_key)):
+async def get_session_by_id(sid: UUID, api_key: str = Depends(verify_api_key)):
     select_query = """
     SELECT chatsummary, chattranscript
     FROM chatrecords
@@ -89,7 +108,7 @@ async def get_session_by_id(id: UUID, api_key: str = Depends(verify_api_key)):
     """
     try:
         conn = await get_connection()
-        record = await conn.fetchrow(select_query, id)
+        record = await conn.fetchrow(select_query, sid)
         await conn.close()
         if record:
             return record
@@ -100,7 +119,7 @@ async def get_session_by_id(id: UUID, api_key: str = Depends(verify_api_key)):
 
 
 @app.put("/update-chat-urgency")
-async def update_chat_urgency(id: UUID, urgency: str, api_key: str = Depends(verify_api_key)):
+async def update_chat_urgency(sid: UUID, urgency: str, api_key: str = Depends(verify_api_key)):
     update_query = """
     UPDATE chatrecords
     SET severity = $1
@@ -108,7 +127,7 @@ async def update_chat_urgency(id: UUID, urgency: str, api_key: str = Depends(ver
     """
     try:
         conn = await get_connection()
-        result = await conn.execute(update_query, urgency, id)
+        result = await conn.execute(update_query, urgency, sid)
         await conn.close()
         if result == 'UPDATE 1':
             return {"message": "Chat urgency updated successfully"}
@@ -119,7 +138,7 @@ async def update_chat_urgency(id: UUID, urgency: str, api_key: str = Depends(ver
 
 
 @app.put("/update-chat-team")
-async def update_chat_team(id: UUID, team: str, api_key: str = Depends(verify_api_key)):
+async def update_chat_team(sid: UUID, team: str, api_key: str = Depends(verify_api_key)):
     update_query = """
     UPDATE chatrecords
     SET category = $1
@@ -127,7 +146,7 @@ async def update_chat_team(id: UUID, team: str, api_key: str = Depends(verify_ap
     """
     try:
         conn = await get_connection()
-        result = await conn.execute(update_query, team, id)
+        result = await conn.execute(update_query, team, sid)
         await conn.close()
         if result == 'UPDATE 1':
             return {"message": "Chat team updated successfully"}
@@ -138,7 +157,7 @@ async def update_chat_team(id: UUID, team: str, api_key: str = Depends(verify_ap
 
 
 @app.post("/take-action")
-async def take_action(id: UUID, action_taken_notes: str, mark_as_complete: bool,
+async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool,
                       api_key: str = Depends(verify_api_key)):
     update_query = """
     UPDATE chatrecords
@@ -147,7 +166,7 @@ async def take_action(id: UUID, action_taken_notes: str, mark_as_complete: bool,
     """
     try:
         conn = await get_connection()
-        result = await conn.execute(update_query, action_taken_notes, mark_as_complete, id)
+        result = await conn.execute(update_query, action_taken_notes, mark_as_complete, sid)
         await conn.close()
         if result == 'UPDATE 1':
             return {"message": "Action taken successfully"}
