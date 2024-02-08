@@ -77,7 +77,7 @@ async def health_check():
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
                          limit: Optional[int] = Query(10, le=100), api_key: str = Depends(verify_api_key)):
     select_query = """
-    SELECT name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, status
+    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, status, category
     FROM chatrecords
     """
     conditions = []
@@ -99,10 +99,10 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/session/{id}")
+@app.get("/session")
 async def get_session_by_id(sid: UUID, api_key: str = Depends(verify_api_key)):
     select_query = """
-    SELECT chatsummary, chattranscript
+    SELECT sessionid, severity, category, mark_as_complete, chatsummary, chattranscript
     FROM chatrecords
     WHERE sessionid = $1
     """
