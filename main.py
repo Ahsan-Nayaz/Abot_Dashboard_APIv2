@@ -11,34 +11,6 @@ from dotenv import load_dotenv
 app = FastAPI()
 load_dotenv(dotenv_path='.venv/.env')
 # Define your API keys
-API_KEYS = {
-    "Jatin": "ab_lE7ZQVFxUGnLaRu5KmD1JvnYFOTCPLwM",
-    "Ahsan": "ab_dmjos9J0Z4zabmIpx8BFviNctENf2ls6"
-}
-
-
-def verify_api_key(api_key: str = Header(None)):
-    """
-    Verify the API key.
-
-    Args:
-        api_key (str, optional): The API key to verify. Defaults to None.
-
-    Returns:
-        str: The verified API key.
-
-    Raises:
-        HTTPException: If the API key is invalid.
-
-    Example:
-        >>> verify_api_key(api_key="abc123")
-        "abc123"
-    """
-
-    if api_key is None or api_key not in API_KEYS.values():
-        raise HTTPException(status_code=403, detail="Invalid API key")
-    return api_key
-
 
 class ChatRecord(BaseModel):
     sessionid: UUID
@@ -75,7 +47,7 @@ async def health_check():
 
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
-                         limit: Optional[int] = Query(10, le=100), api_key: str = Depends(verify_api_key)):
+                         limit: Optional[int] = Query(10, le=100)):
     select_query = """
     SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, status, category
     FROM chatrecords
@@ -100,7 +72,7 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
 
 
 @app.get("/session")
-async def get_session_by_id(sid: UUID, api_key: str = Depends(verify_api_key)):
+async def get_session_by_id(sid: UUID):
     select_query = """
     SELECT sessionid, severity, category, mark_as_complete, chatsummary, chattranscript
     FROM chatrecords
@@ -119,7 +91,7 @@ async def get_session_by_id(sid: UUID, api_key: str = Depends(verify_api_key)):
 
 
 @app.put("/update-chat-urgency")
-async def update_chat_urgency(sid: UUID, urgency: str, api_key: str = Depends(verify_api_key)):
+async def update_chat_urgency(sid: UUID, urgency: str):
     update_query = """
     UPDATE chatrecords
     SET severity = $1
@@ -138,7 +110,7 @@ async def update_chat_urgency(sid: UUID, urgency: str, api_key: str = Depends(ve
 
 
 @app.put("/update-chat-team")
-async def update_chat_team(sid: UUID, team: str, api_key: str = Depends(verify_api_key)):
+async def update_chat_team(sid: UUID, team: str):
     update_query = """
     UPDATE chatrecords
     SET category = $1
@@ -157,8 +129,7 @@ async def update_chat_team(sid: UUID, team: str, api_key: str = Depends(verify_a
 
 
 @app.post("/take-action")
-async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool,
-                      api_key: str = Depends(verify_api_key)):
+async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool):
     update_query = """
     UPDATE chatrecords
     SET action_taken_notes = $1, mark_as_complete = $2
