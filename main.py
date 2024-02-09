@@ -6,6 +6,9 @@ from uuid import UUID
 from typing import List, Optional
 from datetime import datetime
 import os
+import json
+import requests
+import http.client
 from dotenv import load_dotenv
 
 app = FastAPI()
@@ -45,6 +48,40 @@ async def health_check():
     return {"message": "FastAPI application is running"}
 
 
+@app.get("/get_roles")
+async def get_user_roles(sid):
+
+    conn = http.client.HTTPSConnection(os.getenv('DOMAIN'))
+
+    payload = ("{\"client_id\":" + f"\"{os.getenv('CLIENT_ID')}\"" +
+               ",\"client_secret\":" + f"\"{os.getenv('CLIENT_SECRET')}\"" +
+               ",\"audience\":" + f"\"https://{os.getenv('DOMAIN')}/api/v2/\"" +
+               ",\"grant_type\":\"client_credentials\"}")
+
+    headers = {'content-type': "application/json"}
+
+    conn.request("POST", "/oauth/token", payload, headers)
+
+    response = conn.getresponse()
+    response_data = response.read().decode('utf-8')
+    # Parse the JSON data
+    # print(response_data)
+    json_data = json.loads(response_data)
+    url = f"https://dev-3cph6dxaz67l2bm7.us.auth0.com/api/v2/users/{sid}/roles"
+
+    payload = {}
+
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': f"Bearer {json_data.get('access_token')}"
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    return response.text
+
+
+
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
                          limit: Optional[int] = Query(10, le=100)):
@@ -52,7 +89,7 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
     SELECT COUNT(*) FROM chatrecords
     """
     select_query = """
-    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, status, category
+    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, mark_as_complete, category
     FROM chatrecords
     """
     conditions = []
