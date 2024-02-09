@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException, Query, Depends, Header
 from pydantic import BaseModel, Field
 import asyncpg
+from jose import jwt
 from asyncpg.exceptions import UniqueViolationError
+from six.moves.urllib.request import urlopen
 from uuid import UUID
 from typing import List, Optional
 from datetime import datetime
@@ -14,6 +16,9 @@ from dotenv import load_dotenv
 app = FastAPI()
 load_dotenv(dotenv_path='.venv/.env')
 # Define your API keys
+ALGORITHMS = ["RS256"]
+AUTH0_DOMAIN = os.getenv('DOMAIN')
+API_AUDIENCE = f"\"https://{os.getenv('DOMAIN')}/api/v2/\""
 
 class ChatRecord(BaseModel):
     sessionid: UUID
@@ -36,11 +41,58 @@ class ChatRecord(BaseModel):
     mark_as_complete: Optional[bool] = False
 
 
+class AuthError(Exception):
+    def __init__(self, error, status_code):
+        self.error = error
+        self.status_code = status_code
+
+
 async def get_connection():
 
     return await asyncpg.connect(user=os.getenv('PGUSER'), password=os.getenv('PGPASSWORD'),
                                  database=os.getenv('PGDATABASE'), host=os.getenv('PGHOST'))
 
+
+async def verify_user(token):
+    jsonurl = urlopen(f"https://{AUTH0_DOMAIN}/.well-known/jwks.json")
+    jwks = json.loads(jsonurl.read())
+    unverified_header = jwt.get_unverified_header(token)
+    rsa_key = {}
+    for key in jwks["keys"]:
+        if key["kid"] == unverified_header["kid"]:
+            rsa_key = {
+                "kty": key["kty"],
+                "kid": key["kid"],
+                "use": key["use"],
+                "n": key["n"],
+                "e": key["e"]
+            }
+    if rsa_key:
+        try:
+            payload = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=ALGORITHMS,
+                audience=os.getenv('AUDIENCE'),
+                issuer="https://" + AUTH0_DOMAIN + "/"
+            )
+            print(payload)
+        except jwt.ExpiredSignatureError:
+            raise AuthError({"code": "token_expired",
+                             "description": "token is expired"}, 401)
+        except jwt.JWTClaimsError:
+            raise AuthError({"code": "invalid_claims",
+                             "description":
+                                 "incorrect claims,"
+                                 "please check the audience and issuer"}, 401)
+        except Exception:
+            raise AuthError({"code": "invalid_header",
+                             "description":
+                                 "Unable to parse authentication"
+                                 " token."}, 401)
+
+    raise AuthError({"code": "invalid_header",
+                     "description": "Unable to find appropriate key"}, 401)
 
 @app.get("/")
 async def health_check():
@@ -49,7 +101,7 @@ async def health_check():
 
 
 @app.get("/get_roles")
-async def get_user_roles(sid):
+async def get_user_roles(sid, verified_user: bool = Depends(verify_user)):
 
     conn = http.client.HTTPSConnection(os.getenv('DOMAIN'))
 
@@ -84,7 +136,7 @@ async def get_user_roles(sid):
 
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
-                         limit: Optional[int] = Query(10, le=100)):
+                         limit: Optional[int] = Query(10, le=100), verified_user: bool = Depends(verify_user)):
     count_query = """
     SELECT COUNT(*) FROM chatrecords
     """
@@ -113,7 +165,7 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
 
 
 @app.get("/session")
-async def get_session_by_id(sid: UUID):
+async def get_session_by_id(sid: UUID, verified_user: bool = Depends(verify_user)):
     select_query = """
     SELECT sessionid, severity, category, mark_as_complete, chatsummary, chattranscript
     FROM chatrecords
@@ -132,7 +184,7 @@ async def get_session_by_id(sid: UUID):
 
 
 @app.put("/update-chat-urgency")
-async def update_chat_urgency(sid: UUID, urgency: str):
+async def update_chat_urgency(sid: UUID, urgency: str, verified_user: bool = Depends(verify_user)):
     update_query = """
     UPDATE chatrecords
     SET severity = $1
@@ -151,7 +203,7 @@ async def update_chat_urgency(sid: UUID, urgency: str):
 
 
 @app.put("/update-chat-team")
-async def update_chat_team(sid: UUID, team: str):
+async def update_chat_team(sid: UUID, team: str, verified_user: bool = Depends(verify_user)):
     update_query = """
     UPDATE chatrecords
     SET category = $1
@@ -170,7 +222,7 @@ async def update_chat_team(sid: UUID, team: str):
 
 
 @app.post("/take-action")
-async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool):
+async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool, verified_user: bool = Depends(verify_user)):
     update_query = """
     UPDATE chatrecords
     SET action_taken_notes = $1, mark_as_complete = $2
