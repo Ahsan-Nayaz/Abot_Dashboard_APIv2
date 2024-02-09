@@ -48,6 +48,9 @@ async def health_check():
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
                          limit: Optional[int] = Query(10, le=100)):
+    count_query = """
+    SELECT COUNT(*) FROM chatrecords
+    """
     select_query = """
     SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, status, category
     FROM chatrecords
@@ -59,14 +62,15 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
         conditions.append(f"name ILIKE '%{search}%'")
     if conditions:
         select_query += " WHERE " + " AND ".join(conditions)
-
-    select_query += f" ORDER BY datetimeofchat DESC LIMIT {limit} OFFSET {(page - 1) * limit}"
+        count_query += " WHERE " + " AND ".join(conditions)
 
     try:
         conn = await get_connection()
+        total_count = await conn.fetchval(count_query)
+        select_query += f" ORDER BY datetimeofchat DESC LIMIT {limit} OFFSET {(page - 1) * limit}"
         records = await conn.fetch(select_query)
         await conn.close()
-        return records
+        return {"total_count": total_count, "records": records}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
