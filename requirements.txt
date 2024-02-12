@@ -21,3 +21,4 @@ python-jose
 six
 pydantic-settings
 pyjwt
+cryptography
