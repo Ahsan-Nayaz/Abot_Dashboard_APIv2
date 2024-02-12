@@ -101,7 +101,7 @@ async def health_check():
 
 
 @app.get("/get_roles")
-async def get_user_roles(sid, verified_user: bool = Depends(verify_user)):
+async def get_user_roles(sid):
 
     conn = http.client.HTTPSConnection(os.getenv('DOMAIN'))
 
@@ -136,7 +136,7 @@ async def get_user_roles(sid, verified_user: bool = Depends(verify_user)):
 
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
-                         limit: Optional[int] = Query(10, le=100), verified_user: bool = Depends(verify_user)):
+                         limit: Optional[int] = Query(10, le=100)):
     count_query = """
     SELECT COUNT(*) FROM chatrecords
     """
@@ -165,7 +165,7 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
 
 
 @app.get("/session")
-async def get_session_by_id(sid: UUID, verified_user: bool = Depends(verify_user)):
+async def get_session_by_id(sid: UUID):
     select_query = """
     SELECT sessionid, severity, category, mark_as_complete, chatsummary, chattranscript
     FROM chatrecords
@@ -184,7 +184,7 @@ async def get_session_by_id(sid: UUID, verified_user: bool = Depends(verify_user
 
 
 @app.put("/update-chat-urgency")
-async def update_chat_urgency(sid: UUID, urgency: str, verified_user: bool = Depends(verify_user)):
+async def update_chat_urgency(sid: UUID, urgency: str):
     update_query = """
     UPDATE chatrecords
     SET severity = $1
@@ -203,7 +203,7 @@ async def update_chat_urgency(sid: UUID, urgency: str, verified_user: bool = Dep
 
 
 @app.put("/update-chat-team")
-async def update_chat_team(sid: UUID, team: str, verified_user: bool = Depends(verify_user)):
+async def update_chat_team(sid: UUID, team: str):
     update_query = """
     UPDATE chatrecords
     SET category = $1
@@ -222,7 +222,7 @@ async def update_chat_team(sid: UUID, team: str, verified_user: bool = Depends(v
 
 
 @app.post("/take-action")
-async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool, verified_user: bool = Depends(verify_user)):
+async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool):
     update_query = """
     UPDATE chatrecords
     SET action_taken_notes = $1, mark_as_complete = $2
