@@ -84,7 +84,7 @@ async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
     # Parse the JSON data
     # print(response_data)
     json_data = json.loads(response_data)
-    url = f"https://dev-3cph6dxaz67l2bm7.us.auth0.com/api/v2/users/{sid}/roles"
+    url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{sid}/roles"
 
     payload = {}
 
