@@ -113,6 +113,8 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
     conditions = []
     if team:
         conditions.append(f"category = '{team}'")
+    else:
+        conditions.append("category IN ('Social Care', 'EIP', 'Not Enough Information')")
     if search:
         conditions.append(f"name ILIKE '%{search}%'")
     if triaging_confirmed:
