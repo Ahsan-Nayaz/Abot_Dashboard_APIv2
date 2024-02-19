@@ -46,6 +46,8 @@ class ChatRecord(BaseModel):
     action_taken_notes: Optional[str] = None
     mark_as_complete: Optional[bool] = False
 
+class Comment(BaseModel):
+    comment: str
 
 class AuthError(Exception):
     def __init__(self, error, status_code):
@@ -100,12 +102,12 @@ async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
 
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
-                         limit: Optional[int] = Query(10, le=100), auth_result: str = Security(auth.verify)):
-    count_query = """
+                         limit: Optional[int] = Query(10, le=100), triaging_confirmed: Optional[bool] = None, auth_result: str = Security(auth.verify)):
+    count_query = """ 
     SELECT COUNT(*) FROM chatrecords
     """
     select_query = """
-    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, mark_as_complete, category
+    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, mark_as_complete, category, triaging_confirmed
     FROM chatrecords
     """
     conditions = []
@@ -113,6 +115,8 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
         conditions.append(f"category = '{team}'")
     if search:
         conditions.append(f"name ILIKE '%{search}%'")
+    if triaging_confirmed:
+        conditions.append(f"triaging_confirmed = '{triaging_confirmed}'")
     if conditions:
         select_query += " WHERE " + " AND ".join(conditions)
         count_query += " WHERE " + " AND ".join(conditions)
@@ -131,16 +135,51 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
 @app.get("/session")
 async def get_session_by_id(sid: UUID, auth_result: str = Security(auth.verify)):
     select_query = """
-    SELECT sessionid, severity, category, mark_as_complete, chatsummary, chattranscript
-    FROM chatrecords
-    WHERE sessionid = $1
+    SELECT c.comment_id, c.comment, r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript
+    FROM chatrecords r
+    LEFT JOIN comments c ON r.sessionid = c.sessionid
+    WHERE r.sessionid = $1
     """
     try:
         conn = await get_connection()
-        record = await conn.fetchrow(select_query, sid)
+        records = await conn.fetch(select_query, sid)
         await conn.close()
-        if record:
-            return record
+        if records:
+            return {
+                "sessionid": records[0]['sessionid'],
+                "severity": records[0]['severity'],
+                "category": records[0]['category'],
+                "mark_as_complete": records[0]['mark_as_complete'],
+                "chatsummary": records[0]['chatsummary'],
+                "chattranscript": records[0]['chattranscript'],
+                "comments": [
+                    {
+                        "comment_id": record['comment_id'],
+                        "comment": record['comment'],
+                    }
+                    for record in records
+                    if record['comment_id'] is not None
+                ],
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Session ID not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/session/{sid}/comments")
+async def add_comment_to_session(sid: UUID, comment: Comment):
+    insert_query = """
+    INSERT INTO comments (sessionid, comment)
+    VALUES ((SELECT sessionid FROM chatrecords WHERE sessionid = $1), $2)
+    RETURNING comment_id
+    """
+    try:
+        conn = await get_connection()
+        record_id = await conn.fetchval(insert_query, sid, comment.comment)
+        await conn.close()
+        if record_id:
+            return {"comment_id": record_id, "comment": comment.comment}
         else:
             raise HTTPException(status_code=404, detail="Session ID not found")
     except Exception as e:
