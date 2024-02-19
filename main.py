@@ -211,7 +211,7 @@ async def update_chat_urgency(sid: UUID, urgency: str, auth_result: str = Securi
 async def update_chat_team(sid: UUID, team: str, auth_result: str = Security(auth.verify)):
     update_query = """
     UPDATE chatrecords
-    SET category = $1
+    SET category = $1, triaging_confirmed = True
     WHERE sessionid = $2
     """
     try:
