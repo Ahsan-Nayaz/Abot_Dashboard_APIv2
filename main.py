@@ -102,7 +102,7 @@ async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
 
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
-                         limit: Optional[int] = Query(10, le=100), triaging_confirmed: Optional[bool] = None, auth_result: str = Security(auth.verify)):
+                         limit: Optional[int] = Query(10, le=100), triaging_confirmed: Optional[str] = None, auth_result: str = Security(auth.verify)):
     count_query = """ 
     SELECT COUNT(*) FROM chatrecords
     """
@@ -122,7 +122,7 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
     if conditions:
         select_query += " WHERE " + " AND ".join(conditions)
         count_query += " WHERE " + " AND ".join(conditions)
-
+    # print(select_query)
     try:
         conn = await get_connection()
         total_count = await conn.fetchval(count_query)
