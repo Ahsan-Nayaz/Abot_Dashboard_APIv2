@@ -1,11 +1,9 @@
-from fastapi import FastAPI, HTTPException, Query, Depends, Header
-from pydantic import BaseModel, Field
+from fastapi import HTTPException, Query
+from pydantic import BaseModel
 import asyncpg
-from jose import jwt
-from asyncpg.exceptions import UniqueViolationError
-from six.moves.urllib.request import urlopen
+
 from uuid import UUID
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime
 from fastapi.security import HTTPBearer  # 👈 new code
 import os
@@ -46,8 +44,10 @@ class ChatRecord(BaseModel):
     action_taken_notes: Optional[str] = None
     mark_as_complete: Optional[bool] = False
 
+
 class Comment(BaseModel):
     comment: str
+
 
 class AuthError(Exception):
     def __init__(self, error, status_code):
@@ -102,7 +102,8 @@ async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
 
 @app.get("/users-data")
 async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
-                         limit: Optional[int] = Query(10, le=100), triaging_confirmed: Optional[str] = None, auth_result: str = Security(auth.verify)):
+                         limit: Optional[int] = Query(10, le=100), triaging_confirmed: Optional[str] = None,
+                         auth_result: str = Security(auth.verify)):
     count_query = """ 
     SELECT COUNT(*) FROM chatrecords
     """
@@ -170,7 +171,7 @@ async def get_session_by_id(sid: UUID, auth_result: str = Security(auth.verify))
 
 
 @app.post("/session/{sid}/comments")
-async def add_comment_to_session(sid: str, comment: Comment):
+async def add_comment_to_session(sid: UUID, comment: Comment):
     insert_query = """
     INSERT INTO comments (sessionid, comment)
     VALUES ((SELECT sessionid FROM chatrecords WHERE sessionid = $1), $2)
@@ -227,7 +228,8 @@ async def update_chat_team(sid: UUID, team: str, auth_result: str = Security(aut
 
 
 @app.post("/take-action")
-async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool, auth_result: str = Security(auth.verify)):
+async def take_action(sid: UUID, action_taken_notes: str, mark_as_complete: bool,
+                      auth_result: str = Security(auth.verify)):
     update_query = """
     UPDATE chatrecords
     SET action_taken_notes = $1, mark_as_complete = $2
