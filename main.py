@@ -171,7 +171,7 @@ async def get_session_by_id(sid: UUID, auth_result: str = Security(auth.verify))
 
 
 @app.post("/session/{sid}/comments")
-async def add_comment_to_session(sid: UUID, comment: Comment):
+async def add_comment_to_session(sid: UUID, comment: Comment, auth_result: str = Security(auth.verify)):
     insert_query = """
     INSERT INTO comments (sessionid, comment)
     VALUES ((SELECT sessionid FROM chatrecords WHERE sessionid = $1), $2)
