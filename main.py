@@ -138,7 +138,7 @@ async def get_users_data(team: Optional[str] = None, search: Optional[str] = Non
 @app.get("/session")
 async def get_session_by_id(sid: UUID, auth_result: str = Security(auth.verify)):
     select_query = """
-    SELECT c.comment_id, c.comment, r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript
+    SELECT c.comment_id, c.comment, c.email, r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript
     FROM chatrecords r
     LEFT JOIN comments c ON r.sessionid = c.sessionid
     WHERE r.sessionid = $1
@@ -159,6 +159,7 @@ async def get_session_by_id(sid: UUID, auth_result: str = Security(auth.verify))
                     {
                         "comment_id": record['comment_id'],
                         "comment": record['comment'],
+                        "email": record['email']
                     }
                     for record in records
                     if record['comment_id'] is not None
@@ -171,15 +172,15 @@ async def get_session_by_id(sid: UUID, auth_result: str = Security(auth.verify))
 
 
 @app.post("/session/{sid}/comments")
-async def add_comment_to_session(sid: UUID, comment: Comment, auth_result: str = Security(auth.verify)):
+async def add_comment_to_session(sid: UUID, comment: Comment, email:str, auth_result: str = Security(auth.verify)):
     insert_query = """
-    INSERT INTO comments (sessionid, comment)
-    VALUES ((SELECT sessionid FROM chatrecords WHERE sessionid = $1), $2)
+    INSERT INTO comments (sessionid, comment, email)
+    VALUES ((SELECT sessionid FROM chatrecords WHERE sessionid = $1), $2, $3)
     RETURNING comment_id
     """
     try:
         conn = await get_connection()
-        record_id = await conn.fetchval(insert_query, sid, comment.comment)
+        record_id = await conn.fetchval(insert_query, sid, comment.comment, email)
         await conn.close()
         if record_id:
             return {"comment_id": record_id, "comment": comment.comment}
