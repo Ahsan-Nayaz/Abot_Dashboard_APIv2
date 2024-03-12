@@ -1,7 +1,5 @@
 import json
 import os
-import random
-import string
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -14,8 +12,8 @@ from fastapi import HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer  # 👈 new code
 from pydantic import BaseModel
-
-from utils import VerifyToken  # 👈 Import the new class
+from core import *
+from core.utils import VerifyToken  # 👈 Import the new class
 
 load_dotenv(dotenv_path='.venv/.env')
 app = FastAPI()
@@ -164,7 +162,8 @@ async def search_user(sid, search_sid, auth_result: str = Security(auth.verify))
 
 
 @app.get("/search_users")
-async def search_user(sid, team=None, search=None, start_date=None, end_date=None, sort="created_at:-1", page=0, per_page=10, include_totals: bool = True, auth_result: str = Security(auth.verify)):
+async def search_user(sid, team=None, search=None, start_date=None, end_date=None, sort="created_at:-1", page=0,
+                      per_page=10, include_totals: bool = True, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]['name']
     if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin']:
@@ -199,36 +198,6 @@ async def search_user(sid, team=None, search=None, start_date=None, end_date=Non
                     raise HTTPException(status_code=response.status, detail=await response.json())
 
 
-async def _generate_password(length=12):
-    characters = string.ascii_letters + string.digits + string.punctuation
-    password = ''.join(random.choice(characters) for i in range(length))
-    return password
-
-
-async def _get_user_roles(sid):
-    async with aiohttp.ClientSession() as session:
-        payload = json.dumps({
-            "client_id": os.getenv('AUTH0_CLIENT_ID'),
-            "client_secret": os.getenv('AUTH0_CLIENT_SECRET'),
-            "audience": f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/",
-            "grant_type": "client_credentials"
-        })
-        headers = {'content-type': "application/json"}
-
-        async with session.post(f"https://{os.getenv('AUTH0_DOMAIN')}/oauth/token", data=payload,
-                                headers=headers) as response:
-            json_data = await response.json()
-
-        url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{sid}/roles"
-        headers = {
-            'Accept': 'application/json',
-            'Authorization': f"Bearer {json_data.get('access_token')}"
-        }
-
-        async with session.get(url, headers=headers) as response:
-            return await response.text(), json_data.get('access_token')
-
-
 @app.get("/get_roles")
 async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
     async with aiohttp.ClientSession() as session:
@@ -254,15 +223,16 @@ async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
             return await response.text()
 
 
-@app.get("/users-data")
-async def get_users_data(team: Optional[str] = None, search: Optional[str] = None, page: Optional[int] = Query(1, ge=1),
-                         limit: Optional[int] = Query(10, le=100), triaging_confirmed: Optional[str] = None,
-                         auth_result: str = Security(auth.verify)):
+@app.get("/session-data")
+async def get_session_data(team: Optional[str] = None, search: Optional[str] = None,
+                           page: Optional[int] = Query(1, ge=1),
+                           limit: Optional[int] = Query(10, le=100), triaging_confirmed: Optional[str] = None,
+                           auth_result: str = Security(auth.verify)):
     count_query = """ 
     SELECT COUNT(*) FROM chatrecords
     """
     select_query = """
-    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, mark_as_complete, category, triaging_confirmed
+    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category,
     FROM chatrecords
     """
     conditions = []

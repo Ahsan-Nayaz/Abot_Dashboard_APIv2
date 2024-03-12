@@ -4,7 +4,7 @@ import jwt  # 👈 new imports
 from fastapi import Depends, HTTPException, status  # 👈 new imports
 from fastapi.security import SecurityScopes, HTTPAuthorizationCredentials, HTTPBearer  # 👈 new imports
 
-from config import get_settings  # 👈 new imports
+from core.config import get_settings  # 👈 new imports
 
 
 class UnauthorizedException(HTTPException):
