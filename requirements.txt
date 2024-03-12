@@ -22,3 +22,4 @@ six
 pydantic-settings
 pyjwt
 cryptography
+aiohttp
