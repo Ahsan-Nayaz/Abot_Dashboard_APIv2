@@ -232,7 +232,7 @@ async def get_session_data(team: Optional[str] = None, search: Optional[str] = N
     SELECT COUNT(*) FROM chatrecords
     """
     select_query = """
-    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category,
+    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category
     FROM chatrecords
     """
     conditions = []
