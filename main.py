@@ -141,7 +141,7 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
         raise HTTPException(status_code=403, detail="Forbidden: You must be a super admin to perform this action")
 
 
-@app.get("/search_user")
+@app.get("/get_user")
 async def search_user(sid, search_sid, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]['name']
@@ -163,7 +163,7 @@ async def search_user(sid, search_sid, auth_result: str = Security(auth.verify))
         raise HTTPException(status_code=403, detail="Forbidden: You must be a super admin to perform this action")
 
 
-@app.get("/search_all_user")
+@app.get("/search_users")
 async def search_user(sid, team=None, search=None, start_date=None, end_date=None, sort="created_at:-1", page=0, per_page=10, include_totals: bool = True, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]['name']
