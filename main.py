@@ -1,19 +1,21 @@
-from fastapi import HTTPException, Query
-from pydantic import BaseModel
-import asyncpg
-
-from uuid import UUID
-from typing import Optional
-from datetime import datetime
-from fastapi.security import HTTPBearer  # 👈 new code
-import os
 import json
-import requests
-import http.client
-from fastapi import FastAPI, Security
-from utils import VerifyToken  # 👈 Import the new class
+import os
+import random
+import string
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
 
+import aiohttp
+import asyncpg
 from dotenv import load_dotenv
+from fastapi import FastAPI, Security
+from fastapi import HTTPException, Query
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer  # 👈 new code
+from pydantic import BaseModel
+
+from utils import VerifyToken  # 👈 Import the new class
 
 load_dotenv(dotenv_path='.venv/.env')
 app = FastAPI()
@@ -68,36 +70,188 @@ async def health_check():
     return {"message": "FastAPI application is running"}
 
 
+@app.get("/create_user")
+async def create_user(sid, name: str, email: str, team: str, role_id: str, auth_result: str = Security(auth.verify)):
+    response, token = await _get_user_roles(sid)
+    role = json.loads(response)[0]['name']
+    if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin']:
+        async with aiohttp.ClientSession() as session:
+            password = await _generate_password()
+            url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users"
+            payload = json.dumps({
+                "email": email,
+                "blocked": False,
+                "email_verified": False,
+                "given_name": name,
+                "family_name": name,
+                "app_metadata": {'team': team},
+                "name": name,
+                "nickname": name,
+                "connection": "Username-Password-Authentication",
+                "password": password,
+                "verify_email": True,
+            })
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': f'Bearer {token}'
+            }
+            async with session.post(url, data=payload,
+                                    headers=headers) as response:
+                json_data = await response.json()
+                json_data['password'] = password
+                roles_url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{json_data['user_id']}/roles"
+
+                payload = json.dumps({
+
+                    "roles": [
+                        role_id
+                    ]
+                })
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {token}'
+                }
+                async with session.post(roles_url, data=payload,
+                                        headers=headers) as role_response:
+                    json_data['role_status'] = role_response.status
+                    return json_data
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden: You must be a super admin to perform this action")
+
+
+@app.get("/delete_user")
+async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify)):
+    response, token = await _get_user_roles(sid)
+    role = json.loads(response)[0]['name']
+    if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin'] and sid != delete_sid:
+        async with aiohttp.ClientSession() as session:
+            url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{delete_sid}"
+            payload = {}
+            headers = {
+                'Authorization': f'Bearer {token}'
+            }
+            async with session.delete(url, data=payload,
+                                      headers=headers) as role_response:
+                if role_response.status == 404:
+                    raise HTTPException(status_code=404, detail="User Not Found!")
+                else:
+                    return JSONResponse(content='User deleted successfully!', status_code=role_response.status)
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden: You must be a super admin to perform this action")
+
+
+@app.get("/search_user")
+async def search_user(sid, search_sid, auth_result: str = Security(auth.verify)):
+    response, token = await _get_user_roles(sid)
+    role = json.loads(response)[0]['name']
+    if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin'] or sid == search_sid:
+        async with aiohttp.ClientSession() as session:
+            url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{search_sid}"
+            payload = {}
+            headers = {
+                'Accept': 'application/json',
+                'Authorization': f'Bearer {token}'
+            }
+            async with session.get(url, data=payload,
+                                   headers=headers) as response:
+                if response.status == 404:
+                    raise HTTPException(status_code=404, detail="User Not Found!")
+                else:
+                    return await response.json()
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden: You must be a super admin to perform this action")
+
+
+@app.get("/search_all_user")
+async def search_user(sid, team=None, search=None, start_date=None, end_date=None, sort="created_at:-1", page=0, per_page=10, include_totals: bool = True, auth_result: str = Security(auth.verify)):
+    response, token = await _get_user_roles(sid)
+    role = json.loads(response)[0]['name']
+    if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin']:
+        url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users"
+
+        headers = {
+            "Authorization": "Bearer " + token
+        }
+
+        params = {
+            "page": page,
+            "per_page": per_page,
+            "sort": sort,
+            'include_totals': str(include_totals).lower()  # Keep it as boolean
+        }
+
+        # Add filters if provided
+        if team:
+            params["q"] = f"app_metadata.team:{team}"
+        if search:
+            params["q"] = search
+        if start_date:
+            params["q"] = f"{params.get('q', '')} AND created_at:[{start_date} TO *]"
+        if end_date:
+            params["q"] = f"{params.get('q', '')} AND created_at:[* TO {end_date}]"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, params=params) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    raise HTTPException(status_code=response.status, detail=await response.json())
+
+
+async def _generate_password(length=12):
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(random.choice(characters) for i in range(length))
+    return password
+
+
+async def _get_user_roles(sid):
+    async with aiohttp.ClientSession() as session:
+        payload = json.dumps({
+            "client_id": os.getenv('AUTH0_CLIENT_ID'),
+            "client_secret": os.getenv('AUTH0_CLIENT_SECRET'),
+            "audience": f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/",
+            "grant_type": "client_credentials"
+        })
+        headers = {'content-type': "application/json"}
+
+        async with session.post(f"https://{os.getenv('AUTH0_DOMAIN')}/oauth/token", data=payload,
+                                headers=headers) as response:
+            json_data = await response.json()
+
+        url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{sid}/roles"
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f"Bearer {json_data.get('access_token')}"
+        }
+
+        async with session.get(url, headers=headers) as response:
+            return await response.text(), json_data.get('access_token')
+
+
 @app.get("/get_roles")
 async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
-    conn = http.client.HTTPSConnection(os.getenv('AUTH0_DOMAIN'))
+    async with aiohttp.ClientSession() as session:
+        payload = json.dumps({
+            "client_id": os.getenv('AUTH0_CLIENT_ID'),
+            "client_secret": os.getenv('AUTH0_CLIENT_SECRET'),
+            "audience": f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/",
+            "grant_type": "client_credentials"
+        })
+        headers = {'content-type': "application/json"}
 
-    payload = ("{\"client_id\":" + f"\"{os.getenv('AUTH0_CLIENT_ID')}\"" +
-               ",\"client_secret\":" + f"\"{os.getenv('AUTH0_CLIENT_SECRET')}\"" +
-               ",\"audience\":" + f"\"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/\"" +
-               ",\"grant_type\":\"client_credentials\"}")
+        async with session.post(f"https://{os.getenv('AUTH0_DOMAIN')}/oauth/token", data=payload,
+                                headers=headers) as response:
+            json_data = await response.json()
 
-    headers = {'content-type': "application/json"}
+        url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{sid}/roles"
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f"Bearer {json_data.get('access_token')}"
+        }
 
-    conn.request("POST", "/oauth/token", payload, headers)
-
-    response = conn.getresponse()
-    response_data = response.read().decode('utf-8')
-    # Parse the JSON data
-    # print(response_data)
-    json_data = json.loads(response_data)
-    url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{sid}/roles"
-
-    payload = {}
-
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': f"Bearer {json_data.get('access_token')}"
-    }
-
-    response = requests.request("GET", url, headers=headers, data=payload)
-
-    return response.text
+        async with session.get(url, headers=headers) as response:
+            return await response.text()
 
 
 @app.get("/users-data")
@@ -172,7 +326,7 @@ async def get_session_by_id(sid: UUID, auth_result: str = Security(auth.verify))
 
 
 @app.post("/session/{sid}/comments")
-async def add_comment_to_session(sid: UUID, comment: Comment, email:str, auth_result: str = Security(auth.verify)):
+async def add_comment_to_session(sid: UUID, comment: Comment, email: str, auth_result: str = Security(auth.verify)):
     insert_query = """
     INSERT INTO comments (sessionid, comment, email)
     VALUES ((SELECT sessionid FROM chatrecords WHERE sessionid = $1), $2, $3)
