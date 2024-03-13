@@ -12,7 +12,7 @@ from fastapi import HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer  # 👈 new code
 from pydantic import BaseModel
-from core import *
+from core import generate_password, _get_user_roles, fetch_role_id
 from core.utils import VerifyToken  # 👈 Import the new class
 
 load_dotenv(dotenv_path='.venv/.env')
@@ -69,12 +69,12 @@ async def health_check():
 
 
 @app.get("/create_user")
-async def create_user(sid, name: str, email: str, team: str, role_id: str, auth_result: str = Security(auth.verify)):
+async def create_user(sid, name: str, email: str, team: str, role: str, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]['name']
     if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin']:
         async with aiohttp.ClientSession() as session:
-            password = await _generate_password()
+            password = await generate_password()
             url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users"
             payload = json.dumps({
                 "email": email,
@@ -99,7 +99,7 @@ async def create_user(sid, name: str, email: str, team: str, role_id: str, auth_
                 json_data = await response.json()
                 json_data['password'] = password
                 roles_url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{json_data['user_id']}/roles"
-
+                role_id = await fetch_role_id(role, token)
                 payload = json.dumps({
 
                     "roles": [
@@ -120,7 +120,7 @@ async def create_user(sid, name: str, email: str, team: str, role_id: str, auth_
 
 @app.get("/delete_user")
 async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify)):
-    response, token = await _get_user_roles(sid)
+    response, token = await get_user_roles(sid)
     role = json.loads(response)[0]['name']
     if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin'] and sid != delete_sid:
         async with aiohttp.ClientSession() as session:
@@ -141,7 +141,7 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
 
 @app.get("/get_user")
 async def search_user(sid, search_sid, auth_result: str = Security(auth.verify)):
-    response, token = await _get_user_roles(sid)
+    response, token = await get_user_roles(sid)
     role = json.loads(response)[0]['name']
     if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin'] or sid == search_sid:
         async with aiohttp.ClientSession() as session:

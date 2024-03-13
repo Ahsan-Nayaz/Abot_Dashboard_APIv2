@@ -6,7 +6,7 @@ import string
 import aiohttp
 
 
-async def _generate_password(length=12):
+async def generate_password(length=12):
     characters = string.ascii_letters + string.digits + string.punctuation
     password = ''.join(random.choice(characters) for i in range(length))
     return password
@@ -33,4 +33,26 @@ async def _get_user_roles(sid):
         }
 
         async with session.get(url, headers=headers) as response:
-            return await response.text(), json_data.get('access_token')
+            return [await response.text(), json_data.get('access_token')]
+
+
+async def create_name_to_id_mapping_async(data):
+    return {item['name']: item['id'] for item in data}
+
+
+async def fetch_id_by_name_async(name_to_id_mapping, name):
+    return name_to_id_mapping.get(name)
+
+
+async def fetch_role_id(role, token):
+    async with aiohttp.ClientSession() as session:
+        url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/roles"
+        payload = {}
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {token}'
+        }
+        async with session.get(url, headers=headers) as response:
+            name_to_id_mapping = await create_name_to_id_mapping_async(await response.json())
+            found_id = await fetch_id_by_name_async(name_to_id_mapping, role)
+            return found_id
