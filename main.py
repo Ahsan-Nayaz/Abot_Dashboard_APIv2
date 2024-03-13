@@ -256,10 +256,10 @@ async def get_session_data(team: Optional[str] = None, search: Optional[str] = N
     select_query = """
     SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category
     FROM (
-        SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category
+        SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
         FROM chatrecords
         UNION ALL
-        SELECT sessionid, name, emailorphonenumber, datetime, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category
+        SELECT sessionid, name, emailorphonenumber, datetime, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
         FROM manualrecords
     ) AS combined
     """
