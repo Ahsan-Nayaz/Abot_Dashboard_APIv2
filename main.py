@@ -12,6 +12,7 @@ from fastapi import HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer  # 👈 new code
 from pydantic import BaseModel
+
 from core import generate_password, _get_user_roles, fetch_role_id
 from core.utils import VerifyToken  # 👈 Import the new class
 
@@ -71,8 +72,8 @@ async def health_check():
 @app.get("/create_user")
 async def create_user(sid, name: str, email: str, team: str, role: str, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
-    role = json.loads(response)[0]['name']
-    if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin']:
+    user_role = json.loads(response)[0]['name']
+    if user_role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin']:
         async with aiohttp.ClientSession() as session:
             password = await generate_password()
             url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users"
