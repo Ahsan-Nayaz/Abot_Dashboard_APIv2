@@ -123,7 +123,7 @@ async def create_user(sid, name: str, email: str, team: str, role: str, contact:
 
 @app.get("/delete_user")
 async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify)):
-    response, token = await get_user_roles(sid)
+    response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]['name']
     if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin'] and sid != delete_sid:
         async with aiohttp.ClientSession() as session:
@@ -144,7 +144,7 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
 
 @app.get("/get_user")
 async def search_user(sid, search_sid, auth_result: str = Security(auth.verify)):
-    response, token = await get_user_roles(sid)
+    response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]['name']
     if role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin'] or sid == search_sid:
         async with aiohttp.ClientSession() as session:
