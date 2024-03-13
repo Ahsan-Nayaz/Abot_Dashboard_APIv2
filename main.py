@@ -248,9 +248,9 @@ async def get_session_data(team: Optional[str] = None, search: Optional[str] = N
                            auth_result: str = Security(auth.verify)):
     count_query = """ 
     SELECT COUNT(*) FROM (
-        SELECT sessionid, category FROM chatrecords
+        SELECT sessionid, category, triaging_confirmed, name FROM chatrecords
         UNION
-        SELECT sessionid, category FROM manualrecords
+        SELECT sessionid, category, triaging_confirmed, name FROM manualrecords
     ) AS combined
     """
     select_query = """
