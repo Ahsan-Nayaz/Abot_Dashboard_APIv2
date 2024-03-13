@@ -70,7 +70,7 @@ async def health_check():
 
 
 @app.get("/create_user")
-async def create_user(sid, name: str, email: str, team: str, role: str, auth_result: str = Security(auth.verify)):
+async def create_user(sid, name: str, email: str, team: str, role: str, contact: str, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
     user_role = json.loads(response)[0]['name']
     if user_role in ['super_admin', 'front_door_admin', 'social_care_admin', 'EIP_admin']:
@@ -81,6 +81,8 @@ async def create_user(sid, name: str, email: str, team: str, role: str, auth_res
                 "email": email,
                 "blocked": False,
                 "email_verified": False,
+                "phone_number": contact,
+                "phone_verified": True,
                 "given_name": name,
                 "family_name": name,
                 "app_metadata": {'team': team},
