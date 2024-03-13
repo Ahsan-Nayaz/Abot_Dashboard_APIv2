@@ -254,7 +254,7 @@ async def get_session_data(team: Optional[str] = None, search: Optional[str] = N
     ) AS combined
     """
     select_query = """
-    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category
+    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
     FROM (
         SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
         FROM chatrecords
