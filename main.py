@@ -173,7 +173,10 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
                     # status_code = role_response.status
                     response = Response(content="User deleted successfully!")
                     response.status_code = 200
-                    return JSONResponse(content={"message": "User deleted successfully!"}, status_code=200)
+                    return JSONResponse(
+                        content={"message": "User deleted successfully!"},
+                        status_code=200,
+                    )
     else:
         raise HTTPException(
             status_code=403,
@@ -230,7 +233,7 @@ async def search_user(
             "per_page": per_page,
             "sort": sort,
             "include_totals": str(include_totals).lower(),  # Keep it as boolean
-            "search_engine": "v3"
+            "search_engine": "v3",
         }
 
         # Add filters if provided
@@ -295,13 +298,14 @@ async def get_session_data(
     page: Optional[int] = Query(1, ge=1),
     limit: Optional[int] = Query(10, le=100),
     triaging_confirmed: Optional[str] = None,
+    history: Optional[bool] = None,
     auth_result: str = Security(auth.verify),
 ):
     count_query = """ 
     SELECT COUNT(*) FROM (
-        SELECT sessionid, category, triaging_confirmed, name FROM chatrecords
+        SELECT sessionid, category, triaging_confirmed, name, mark_as_complete FROM chatrecords
         UNION
-        SELECT sessionid, category, triaging_confirmed, name FROM manualrecords
+        SELECT sessionid, category, triaging_confirmed, name, mark_as_complete FROM manualrecords
     ) AS combined
     """
     select_query = """
@@ -325,6 +329,8 @@ async def get_session_data(
         conditions.append(f"name ILIKE '%{search}%'")
     if triaging_confirmed:
         conditions.append(f"triaging_confirmed = '{triaging_confirmed}'")
+    if history:
+        conditions.append(f"mark_as_complete = '{history}'")
     if conditions:
         where_clause = " WHERE " + " AND ".join(conditions)
         select_query += where_clause
