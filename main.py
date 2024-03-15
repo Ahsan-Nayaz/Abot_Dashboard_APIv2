@@ -8,7 +8,7 @@ import aiohttp
 import asyncpg
 from dotenv import load_dotenv
 from fastapi import FastAPI, Security
-from fastapi import HTTPException, Query
+from fastapi import HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer  # 👈 new code
 from pydantic import BaseModel
@@ -98,7 +98,7 @@ async def create_user(
         "super_admin",
         "front_door_admin",
         "social_care_admin",
-        "EIP_admin",
+        "eip_admin",
     ]:
         async with aiohttp.ClientSession() as session:
             password = await generate_password()
@@ -151,7 +151,13 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]["name"]
     if (
-        role in ["super_admin", "front_door_admin", "social_care_admin", "EIP_admin"]
+        role
+        in [
+            "super_admin",
+            "front_door_admin",
+            "social_care_admin",
+            "eip_admin",
+        ]
         and sid != delete_sid
     ):
         async with aiohttp.ClientSession() as session:
@@ -164,10 +170,10 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
                 if role_response.status == 404:
                     raise HTTPException(status_code=404, detail="User Not Found!")
                 else:
-                    return JSONResponse(
-                        content="User deleted successfully!",
-                        status_code=role_response.status,
-                    )
+                    # status_code = role_response.status
+                    response = Response(content="User deleted successfully!")
+                    response.status_code = 200
+                    return JSONResponse(content={"message": "User deleted successfully!"}, status_code=200)
     else:
         raise HTTPException(
             status_code=403,
@@ -176,7 +182,7 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
 
 
 @app.get("/get_user")
-async def search_user(sid, search_sid, auth_result: str = Security(auth.verify)):
+async def get_user(sid, search_sid, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]["name"]
     if (
@@ -214,7 +220,7 @@ async def search_user(
 ):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]["name"]
-    if role in ["super_admin", "front_door_admin", "social_care_admin", "EIP_admin"]:
+    if role in ["super_admin", "front_door_admin", "social_care_admin", "eip_admin"]:
         url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users"
 
         headers = {"Authorization": "Bearer " + token}
@@ -224,6 +230,7 @@ async def search_user(
             "per_page": per_page,
             "sort": sort,
             "include_totals": str(include_totals).lower(),  # Keep it as boolean
+            "search_engine": "v3"
         }
 
         # Add filters if provided
@@ -231,7 +238,7 @@ async def search_user(
         if team:
             query.append(f"user_metadata.team:{team}")
         if search:
-            query.append(search)
+            query.append(f"(name:*{search}* OR email:*{search}*)")
         if start_date and end_date:
             query.append(f"created_at:[{start_date} TO {end_date}]")
         elif start_date:
@@ -547,7 +554,7 @@ async def add_manual_record(
     record: ManualRecordInput, auth_result: str = Security(auth.verify)
 ):
     insert_query = """
-    INSERT INTO manual_records (name, email, severity, category, request_details, datetime)
+    INSERT INTO manualrecords (name, emailorphonenumber, severity, category, request_details, datetime)
     VALUES ($1, $2, $3, $4, $5, $6)
     """
     try:
