@@ -7,9 +7,14 @@ import aiohttp
 
 
 async def generate_password(length=12):
-    characters = string.ascii_letters + string.digits + string.punctuation
-    password = ''.join(random.choice(characters) for i in range(length))
-    return password
+    while True:
+        password = ''.join(random.choices(string.ascii_letters + string.digits + string.punctuation, k=length))
+        if (any(c.islower() for c in password) and 
+                any(c.isupper() for c in password) and 
+                any(c in string.punctuation for c in password)):
+            return password
+
+
 
 
 async def _get_user_roles(sid):
