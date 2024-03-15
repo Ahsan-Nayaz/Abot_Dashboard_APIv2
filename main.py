@@ -239,9 +239,9 @@ async def search_user(
         # Add filters if provided
         query = []
         if team:
-            query.append(f"user_metadata.team:{team}")
+            query.append(f"user_metadata.team:\"{team}\"")
         if search:
-            query.append(f"(name:*{search}* OR email:*{search}*)")
+            query.append(f"(name:*\"{search}\"* OR email:*\"{search}\"*)")
         if start_date and end_date:
             query.append(f"created_at:[{start_date} TO {end_date}]")
         elif start_date:
@@ -250,7 +250,7 @@ async def search_user(
             query.append(f"created_at:[* TO {end_date}]")
 
         params["q"] = " AND ".join(query)
-
+        print(params["q"])
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, params=params) as response:
                 if response.status == 200:
