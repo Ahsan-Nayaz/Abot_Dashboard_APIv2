@@ -15,8 +15,6 @@ async def generate_password(length=12):
             return password
 
 
-
-
 async def _get_user_roles(sid):
     async with aiohttp.ClientSession() as session:
         payload = json.dumps({
