@@ -33,7 +33,6 @@ async def _get_user_roles(sid):
         }
 
         async with session.get(url, headers=headers) as response:
-            print(json_data.get('access_token'))
             return await response.text(), json_data.get('access_token')
 
 
