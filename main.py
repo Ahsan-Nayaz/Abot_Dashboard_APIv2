@@ -241,7 +241,7 @@ async def search_user(
         if team:
             query.append(f"user_metadata.team:\"{team}\"")
         if search:
-            query.append(f"(name:*\"{search}\"* OR email:*\"{search}\"*)")
+            query.append(f"(name:*{search}* OR email:*{search}*)")
         if start_date and end_date:
             query.append(f"created_at:[{start_date} TO {end_date}]")
         elif start_date:
