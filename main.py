@@ -354,7 +354,7 @@ async def get_session_by_id(
 ):
     if flag == "manual":
         select_query = """
-           SELECT m.sessionid, m.severity, m.category, m.mark_as_complete, m.request_details,
+           SELECT m.sessionid, m.severity, m.category, m.mark_as_complete, m.request_details, m.action_taken_notes,
                   c.comment_id, c.comment, c.email
            FROM manualrecords m
            LEFT JOIN comments c ON m.sessionid = c.sessionid_manual
@@ -362,7 +362,7 @@ async def get_session_by_id(
            """
     elif flag == "chat":
         select_query = """
-           SELECT r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript,
+           SELECT r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript, r.action_taken_notes,
                   c.comment_id, c.comment, c.email
            FROM chatrecords r
            LEFT JOIN comments c ON r.sessionid = c.sessionid_chat
@@ -386,6 +386,7 @@ async def get_session_by_id(
                 "severity": record["severity"],
                 "category": record["category"],
                 "mark_as_complete": record["mark_as_complete"],
+                "action_taken_notes": record["action_taken_notes"],
                 "request_details": record["request_details"],
                 "comments": [
                     {
@@ -413,6 +414,7 @@ async def get_session_by_id(
                 "severity": record["severity"],
                 "category": record["category"],
                 "mark_as_complete": record["mark_as_complete"],
+                "action_taken_notes": record["action_taken_notes"],
                 "chatsummary": record["chatsummary"],
                 "chattranscript": record["chattranscript"],
                 "comments": comments,
