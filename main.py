@@ -357,7 +357,7 @@ async def get_session_by_id(
            SELECT m.sessionid, m.severity, m.category, m.mark_as_complete, m.request_details,
                   c.comment_id, c.comment, c.email
            FROM manualrecords m
-           LEFT JOIN comments c ON m.sessionid = c.sessionid
+           LEFT JOIN comments c ON m.sessionid = c.sessionid_manual
            WHERE m.sessionid = $1
            """
     elif flag == "chat":
@@ -365,7 +365,7 @@ async def get_session_by_id(
            SELECT r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript,
                   c.comment_id, c.comment, c.email
            FROM chatrecords r
-           LEFT JOIN comments c ON r.sessionid = c.sessionid
+           LEFT JOIN comments c ON r.sessionid = c.sessionid_chat
            WHERE r.sessionid = $1
            """
     else:
@@ -431,13 +431,13 @@ async def add_comment_to_session(
 ):
     if flag == "manual":
         insert_query = """
-        INSERT INTO comments (sessionid, comment, email)
+        INSERT INTO comments (sessionid_manual, comment, email)
         VALUES ((SELECT sessionid FROM manualrecords WHERE sessionid = $1), $2, $3)
         RETURNING comment_id
         """
     elif flag == "chat":
         insert_query = """
-        INSERT INTO comments (sessionid, comment, email)
+        INSERT INTO comments (sessionid_chat, comment, email)
         VALUES ((SELECT sessionid FROM chatrecords WHERE sessionid = $1), $2, $3)
         RETURNING comment_id
         """
