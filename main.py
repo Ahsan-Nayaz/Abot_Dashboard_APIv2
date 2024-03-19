@@ -96,7 +96,7 @@ async def create_user(
     user_role = json.loads(response)[0]["name"]
     if user_role in [
         "super_admin",
-        "front_door_admin",
+        "cafd_admin",
         "social_care_admin",
         "eip_admin",
     ]:
@@ -154,7 +154,7 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
         role
         in [
             "super_admin",
-            "front_door_admin",
+            "cafd_admin",
             "social_care_admin",
             "eip_admin",
         ]
@@ -189,7 +189,7 @@ async def get_user(sid, search_sid, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]["name"]
     if (
-        role in ["super_admin", "front_door_admin", "social_care_admin", "EIP_admin"]
+        role in ["super_admin", "cafd_admin", "social_care_admin", "EIP_admin"]
         or sid == search_sid
     ):
         async with aiohttp.ClientSession() as session:
@@ -223,7 +223,7 @@ async def search_user(
 ):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]["name"]
-    if role in ["super_admin", "front_door_admin", "social_care_admin", "eip_admin"]:
+    if role in ["super_admin", "cafd_admin", "social_care_admin", "eip_admin"]:
         url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users"
 
         headers = {"Authorization": "Bearer " + token}
@@ -329,7 +329,7 @@ async def get_session_data(
         conditions.append(f"name ILIKE '%{search}%'")
     if triaging_confirmed:
         conditions.append(f"triaging_confirmed = '{triaging_confirmed}'")
-    if history:
+    if history is not None:
         conditions.append(f"mark_as_complete = '{history}'")
     if conditions:
         where_clause = " WHERE " + " AND ".join(conditions)
