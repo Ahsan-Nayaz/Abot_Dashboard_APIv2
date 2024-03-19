@@ -323,7 +323,7 @@ async def get_session_data(
         conditions.append(f"category = '{team}'")
     else:
         conditions.append(
-            "LOWER(category) IN ('social care', 'eip', 'cafd', 'not enough information')"
+            "LOWER(category) IN ('social_care', 'eip', 'cafd', 'not_enough_information')"
         )
     if search:
         conditions.append(f"name ILIKE '%{search}%'")
