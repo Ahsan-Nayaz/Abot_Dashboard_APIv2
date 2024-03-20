@@ -295,6 +295,7 @@ async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
 async def get_session_data(
     team: Optional[str] = None,
     search: Optional[str] = None,
+    email: Optional[str] = None,
     page: Optional[int] = Query(1, ge=1),
     limit: Optional[int] = Query(10, le=100),
     triaging_confirmed: Optional[str] = None,
@@ -331,6 +332,8 @@ async def get_session_data(
         conditions.append(f"triaging_confirmed = '{triaging_confirmed}'")
     if history is not None:
         conditions.append(f"mark_as_complete = '{history}'")
+    if email:
+        conditions.append(f"email = '{email}'")
     if conditions:
         where_clause = " WHERE " + " AND ".join(conditions)
         select_query += where_clause
@@ -580,3 +583,37 @@ async def add_manual_record(
         return {"message": "Manual record added successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/reopen-request")
+async def reopen_request(
+    sid: str, flag: str, auth_result: str = Security(auth.verify)
+):
+    if flag == "manual":
+        update_query = """
+        UPDATE manualrecords
+        SET mark_as_complete = false
+        WHERE sessionid = $1
+        """
+    elif flag == "chat":
+        update_query = """
+        UPDATE chatrecords
+        SET mark_as_complete = false
+        WHERE sessionid = $1
+        """
+    else:
+        raise HTTPException(status_code=400, detail="Invalid flag value")
+
+    try:
+        conn = await get_connection()
+        result = await conn.execute(
+            update_query, sid
+        )
+        await conn.close()
+        if result == "UPDATE 1":
+            return {"message": "Action taken successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Session ID not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
