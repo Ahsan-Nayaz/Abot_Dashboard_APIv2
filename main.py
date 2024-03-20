@@ -304,9 +304,9 @@ async def get_session_data(
 ):
     count_query = """ 
     SELECT COUNT(*) FROM (
-        SELECT sessionid, category, triaging_confirmed, name, mark_as_complete FROM chatrecords
+        SELECT sessionid, category, triaging_confirmed, name, mark_as_complete, emailorphonenumber FROM chatrecords
         UNION
-        SELECT sessionid, category, triaging_confirmed, name, mark_as_complete FROM manualrecords
+        SELECT sessionid, category, triaging_confirmed, name, mark_as_complete, emailorphonenumber FROM manualrecords
     ) AS combined
     """
     select_query = """
@@ -333,7 +333,7 @@ async def get_session_data(
     if history is not None:
         conditions.append(f"mark_as_complete = '{history}'")
     if email:
-        conditions.append(f"email = '{email}'")
+        conditions.append(f"emailorphonenumber = '{email}'")
     if conditions:
         where_clause = " WHERE " + " AND ".join(conditions)
         select_query += where_clause
