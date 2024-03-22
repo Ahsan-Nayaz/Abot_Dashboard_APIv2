@@ -84,13 +84,13 @@ async def health_check():
 
 @app.get("/create_user")
 async def create_user(
-    sid,
-    name: str,
-    email: str,
-    team: str,
-    role: str,
-    contact: str,
-    auth_result: str = Security(auth.verify),
+        sid,
+        name: str,
+        email: str,
+        team: str,
+        role: str,
+        contact: str,
+        auth_result: str = Security(auth.verify),
 ):
     response, token = await _get_user_roles(sid)
     user_role = json.loads(response)[0]["name"]
@@ -135,7 +135,7 @@ async def create_user(
                     "Authorization": f"Bearer {token}",
                 }
                 async with session.post(
-                    roles_url, data=payload, headers=headers
+                        roles_url, data=payload, headers=headers
                 ) as role_response:
                     json_data["role_status"] = role_response.status
                     return json_data
@@ -151,21 +151,21 @@ async def delete_user(sid, delete_sid, auth_result: str = Security(auth.verify))
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]["name"]
     if (
-        role
-        in [
-            "super_admin",
-            "cafd_admin",
-            "social_care_admin",
-            "eip_admin",
-        ]
-        and sid != delete_sid
+            role
+            in [
+        "super_admin",
+        "cafd_admin",
+        "social_care_admin",
+        "eip_admin",
+    ]
+            and sid != delete_sid
     ):
         async with aiohttp.ClientSession() as session:
             url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{delete_sid}"
             payload = {}
             headers = {"Authorization": f"Bearer {token}"}
             async with session.delete(
-                url, data=payload, headers=headers
+                    url, data=payload, headers=headers
             ) as role_response:
                 if role_response.status == 404:
                     raise HTTPException(status_code=404, detail="User Not Found!")
@@ -189,8 +189,8 @@ async def get_user(sid, search_sid, auth_result: str = Security(auth.verify)):
     response, token = await _get_user_roles(sid)
     role = json.loads(response)[0]["name"]
     if (
-        role in ["super_admin", "cafd_admin", "social_care_admin", "EIP_admin"]
-        or sid == search_sid
+            role in ["super_admin", "cafd_admin", "social_care_admin", "EIP_admin"]
+            or sid == search_sid
     ):
         async with aiohttp.ClientSession() as session:
             url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users/{search_sid}"
@@ -210,55 +210,55 @@ async def get_user(sid, search_sid, auth_result: str = Security(auth.verify)):
 
 @app.get("/search_users")
 async def search_user(
-    sid,
-    team=None,
-    search=None,
-    start_date=None,
-    end_date=None,
-    sort="created_at:-1",
-    page=0,
-    per_page=10,
-    include_totals: bool = True,
-    auth_result: str = Security(auth.verify),
+        sid,
+        team=None,
+        search=None,
+        start_date=None,
+        end_date=None,
+        sort="created_at:-1",
+        page=0,
+        per_page=10,
+        include_totals: bool = True,
+        auth_result: str = Security(auth.verify),
 ):
-    response, token = await _get_user_roles(sid)
-    role = json.loads(response)[0]["name"]
-    if role in ["super_admin", "cafd_admin", "social_care_admin", "eip_admin"]:
-        url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users"
+    _, token = await _get_user_roles(sid)
+    # role = json.loads(response)[0]["name"]
+    # if role in ["super_admin", "cafd_admin", "social_care_admin", "eip_admin"]:
+    url = f"https://{os.getenv('AUTH0_DOMAIN')}/api/v2/users"
 
-        headers = {"Authorization": "Bearer " + token}
+    headers = {"Authorization": "Bearer " + token}
 
-        params = {
-            "page": page,
-            "per_page": per_page,
-            "sort": sort,
-            "include_totals": str(include_totals).lower(),  # Keep it as boolean
-            "search_engine": "v3",
-        }
+    params = {
+        "page": page,
+        "per_page": per_page,
+        "sort": sort,
+        "include_totals": str(include_totals).lower(),  # Keep it as boolean
+        "search_engine": "v3",
+    }
 
-        # Add filters if provided
-        query = []
-        if team:
-            query.append(f"user_metadata.team:\"{team}\"")
-        if search:
-            query.append(f"(name:*{search}* OR email:*{search}*)")
-        if start_date and end_date:
-            query.append(f"created_at:[{start_date} TO {end_date}]")
-        elif start_date:
-            query.append(f"created_at:[{start_date} TO *]")
-        elif end_date:
-            query.append(f"created_at:[* TO {end_date}]")
+    # Add filters if provided
+    query = []
+    if team:
+        query.append(f"user_metadata.team:\"{team}\"")
+    if search:
+        query.append(f"(name:*{search}* OR email:*{search}*)")
+    if start_date and end_date:
+        query.append(f"created_at:[{start_date} TO {end_date}]")
+    elif start_date:
+        query.append(f"created_at:[{start_date} TO *]")
+    elif end_date:
+        query.append(f"created_at:[* TO {end_date}]")
 
-        params["q"] = " AND ".join(query)
-        print(params["q"])
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, params=params) as response:
-                if response.status == 200:
-                    return await response.json()
-                else:
-                    raise HTTPException(
-                        status_code=response.status, detail=await response.json()
-                    )
+    params["q"] = " AND ".join(query)
+    print(params["q"])
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                raise HTTPException(
+                    status_code=response.status, detail=await response.json()
+                )
 
 
 @app.get("/get_roles")
@@ -275,9 +275,9 @@ async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
         headers = {"content-type": "application/json"}
 
         async with session.post(
-            f"https://{os.getenv('AUTH0_DOMAIN')}/oauth/token",
-            data=payload,
-            headers=headers,
+                f"https://{os.getenv('AUTH0_DOMAIN')}/oauth/token",
+                data=payload,
+                headers=headers,
         ) as response:
             json_data = await response.json()
 
@@ -293,24 +293,17 @@ async def get_user_roles(sid, auth_result: str = Security(auth.verify)):
 
 @app.get("/session-data")
 async def get_session_data(
-    team: Optional[str] = None,
-    search: Optional[str] = None,
-    email: Optional[str] = None,
-    page: Optional[int] = Query(1, ge=1),
-    limit: Optional[int] = Query(10, le=100),
-    triaging_confirmed: Optional[str] = None,
-    history: Optional[bool] = None,
-    auth_result: str = Security(auth.verify),
+        team: Optional[str] = None,
+        search: Optional[str] = None,
+        email: Optional[str] = None,
+        page: Optional[int] = Query(1, ge=1),
+        limit: Optional[int] = Query(10, le=100),
+        triaging_confirmed: Optional[str] = None,
+        history: Optional[bool] = None,
+        auth_result: str = Security(auth.verify),
 ):
     count_query = """ 
-    SELECT COUNT(*) FROM (
-        SELECT sessionid, category, triaging_confirmed, name, mark_as_complete, emailorphonenumber FROM chatrecords
-        UNION
-        SELECT sessionid, category, triaging_confirmed, name, mark_as_complete, emailorphonenumber FROM manualrecords
-    ) AS combined
-    """
-    select_query = """
-    SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
+    SELECT COUNT(*)
     FROM (
         SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
         FROM chatrecords
@@ -318,6 +311,18 @@ async def get_session_data(
         SELECT sessionid, name, emailorphonenumber, datetime, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
         FROM manualrecords
     ) AS combined
+    LEFT JOIN assignee ON combined.sessionid = assignee.sessionid_chat OR combined.sessionid = assignee.sessionid_manual
+    """
+    select_query = """
+    SELECT combined.sessionid, combined.name, combined.emailorphonenumber, combined.datetimeofchat, combined.severity, combined.socialcareeligibility, combined.triaging_confirmed, combined.mark_as_complete, combined.category, combined.flag, assignee.name as assignee_name, assignee.email as assignee_email, assignee.status as request_status
+    FROM (
+        SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
+        FROM chatrecords
+        UNION ALL
+        SELECT sessionid, name, emailorphonenumber, datetime, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
+        FROM manualrecords
+    ) AS combined
+    LEFT JOIN assignee ON combined.sessionid = assignee.sessionid_chat OR combined.sessionid = assignee.sessionid_manual
     """
     conditions = []
     if team:
@@ -353,22 +358,26 @@ async def get_session_data(
 
 @app.get("/session")
 async def get_session_by_id(
-    sid: UUID, flag: str, auth_result: str = Security(auth.verify)
+        sid: UUID, flag: str, auth_result: str = Security(auth.verify)
 ):
     if flag == "manual":
         select_query = """
            SELECT m.sessionid, m.severity, m.category, m.mark_as_complete, m.request_details, m.action_taken_notes,
-                  c.comment_id, c.comment, c.email
+                  c.comment_id, c.comment, c.email,
+                  a.name AS assignee_name, a.email AS assignee_email, a.status AS assignee_status
            FROM manualrecords m
            LEFT JOIN comments c ON m.sessionid = c.sessionid_manual
+           LEFT JOIN assignee a ON m.sessionid = a.sessionid_manual
            WHERE m.sessionid = $1
            """
     elif flag == "chat":
         select_query = """
            SELECT r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript, r.action_taken_notes,
-                  c.comment_id, c.comment, c.email
+                  c.comment_id, c.comment, c.email,
+                  a.name AS assignee_name, a.email AS assignee_email, a.status AS assignee_status
            FROM chatrecords r
            LEFT JOIN comments c ON r.sessionid = c.sessionid_chat
+           LEFT JOIN assignee a ON r.sessionid = a.sessionid_chat
            WHERE r.sessionid = $1
            """
     else:
@@ -400,6 +409,9 @@ async def get_session_by_id(
                     for record in records
                     if record["comment_id"] is not None
                 ],
+                "assignee_name": record["assignee_name"],
+                "assignee_email": record["assignee_email"],
+                "assignee_status": record["assignee_status"],
             }
         else:
             record = records[0]
@@ -421,18 +433,22 @@ async def get_session_by_id(
                 "chatsummary": record["chatsummary"],
                 "chattranscript": record["chattranscript"],
                 "comments": comments,
+                "assignee_name": record["assignee_name"],
+                "assignee_email": record["assignee_email"],
+                "assignee_status": record["assignee_status"],
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 @app.post("/session/{sid}/comments")
 async def add_comment_to_session(
-    sid: UUID,
-    comment: Comment,
-    email: str,
-    flag: str,
-    auth_result: str = Security(auth.verify),
+        sid: UUID,
+        comment: Comment,
+        email: str,
+        flag: str,
+        auth_result: str = Security(auth.verify),
 ):
     if flag == "manual":
         insert_query = """
@@ -461,9 +477,87 @@ async def add_comment_to_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/session/assign")
+async def assign(
+        request_id: UUID,
+        name: str,
+        email: str,
+        flag: str,
+        auth_result: str = Security(auth.verify),
+):
+    if flag == "manual":
+        update_query = """
+        UPDATE assignee
+        SET name = $1, email = $2
+        WHERE sessionid_manual = $3
+        """
+        insert_query = """
+        INSERT INTO assignee (sessionid_manual, name, email)
+        VALUES ($1, $2, $3)
+        """
+        # session_id_column = 'sessionid_manual'
+    elif flag == "chat":
+        update_query = """
+        UPDATE assignee
+        SET name = $1, email = $2
+        WHERE sessionid_chat = $3
+        """
+        insert_query = """
+        INSERT INTO assignee (sessionid_chat, name, email)
+        VALUES ($1, $2, $3)
+        """
+        # session_id_column = 'sessionid_chat'
+    else:
+        raise HTTPException(status_code=400, detail="Invalid flag value")
+
+    try:
+        conn = await get_connection()
+        async with conn.transaction():
+            # First try to update if the record exists
+            result = await conn.execute(update_query, name, email, request_id)
+            # If the record does not exist, insert a new one
+            if result == "UPDATE 0":
+                await conn.execute(insert_query, request_id, name, email)
+        await conn.close()
+        return {"message": "Request assigned successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/session/status")
+async def update_request_status(
+        request_id: UUID, status: str, flag: str, auth_result: str = Security(auth.verify)
+):
+    if flag == "manual":
+        update_query = """
+        UPDATE assignee
+        SET status = $1
+        WHERE sessionid_manual = $2;
+        """
+    elif flag == "chat":
+        update_query = """
+        UPDATE assignee
+        SET status = $1
+        WHERE sessionid_chat = $2;
+        """
+    else:
+        raise HTTPException(status_code=400, detail="Invalid flag value")
+
+    try:
+        conn = await get_connection()
+        result = await conn.execute(update_query, status, request_id)
+        await conn.close()
+        if result == "UPDATE 1":
+            return {"message": "Request status updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Session ID not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.put("/update-chat-urgency")
 async def update_chat_urgency(
-    sid: UUID, urgency: str, flag: str, auth_result: str = Security(auth.verify)
+        sid: UUID, urgency: str, flag: str, auth_result: str = Security(auth.verify)
 ):
     if flag == "manual":
         update_query = """
@@ -494,7 +588,7 @@ async def update_chat_urgency(
 
 @app.put("/update-chat-team")
 async def update_chat_team(
-    sid: UUID, team: str, flag: str, auth_result: str = Security(auth.verify)
+        sid: UUID, team: str, flag: str, auth_result: str = Security(auth.verify)
 ):
     if flag == "manual":
         update_query = """
@@ -525,11 +619,11 @@ async def update_chat_team(
 
 @app.post("/take-action")
 async def take_action(
-    sid: UUID,
-    action_taken_notes: str,
-    mark_as_complete: bool,
-    flag: str,
-    auth_result: str = Security(auth.verify),
+        sid: UUID,
+        action_taken_notes: str,
+        mark_as_complete: bool,
+        flag: str,
+        auth_result: str = Security(auth.verify),
 ):
     if flag == "manual":
         update_query = """
@@ -562,7 +656,7 @@ async def take_action(
 
 @app.post("/add-manual-record")
 async def add_manual_record(
-    record: ManualRecordInput, auth_result: str = Security(auth.verify)
+        record: ManualRecordInput, auth_result: str = Security(auth.verify)
 ):
     insert_query = """
     INSERT INTO manualrecords (name, emailorphonenumber, severity, category, request_details, datetime)
@@ -587,7 +681,7 @@ async def add_manual_record(
 
 @app.post("/reopen-request")
 async def reopen_request(
-    sid: str, flag: str, auth_result: str = Security(auth.verify)
+        sid: str, flag: str, auth_result: str = Security(auth.verify)
 ):
     if flag == "manual":
         update_query = """
@@ -616,4 +710,3 @@ async def reopen_request(
             raise HTTPException(status_code=404, detail="Session ID not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
