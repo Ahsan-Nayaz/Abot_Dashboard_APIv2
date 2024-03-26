@@ -49,6 +49,7 @@ class ChatRecord(BaseModel):
 class ManualRecordInput(BaseModel):
     name: str
     email: str
+    phonenumber: str
     severity: str
     team: str
     request_details: str
@@ -305,21 +306,21 @@ async def get_session_data(
     count_query = """ 
     SELECT COUNT(*)
     FROM (
-        SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
+        SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag, phonenumber
         FROM chatrecords
         UNION ALL
-        SELECT sessionid, name, emailorphonenumber, datetime, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
+        SELECT sessionid, name, emailorphonenumber, datetime, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag, phonenumber
         FROM manualrecords
     ) AS combined
     LEFT JOIN assignee ON combined.sessionid = assignee.sessionid_chat OR combined.sessionid = assignee.sessionid_manual
     """
     select_query = """
-    SELECT combined.sessionid, combined.name, combined.emailorphonenumber, combined.datetimeofchat, combined.severity, combined.socialcareeligibility, combined.triaging_confirmed, combined.mark_as_complete, combined.category, combined.flag, assignee.name as assignee_name, assignee.email as assignee_email, assignee.status as request_status
+    SELECT combined.sessionid, combined.name, combined.emailorphonenumber, combined.datetimeofchat, combined.severity, combined.socialcareeligibility, combined.triaging_confirmed, combined.mark_as_complete, combined.category, combined.flag, combined.phonenumber, assignee.name as assignee_name, assignee.email as assignee_email, assignee.status as request_status
     FROM (
-        SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
+        SELECT sessionid, name, emailorphonenumber, datetimeofchat, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag, phonenumber
         FROM chatrecords
         UNION ALL
-        SELECT sessionid, name, emailorphonenumber, datetime, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag
+        SELECT sessionid, name, emailorphonenumber, datetime, severity, socialcareeligibility, triaging_confirmed, mark_as_complete, category, flag, phonenumber
         FROM manualrecords
     ) AS combined
     LEFT JOIN assignee ON combined.sessionid = assignee.sessionid_chat OR combined.sessionid = assignee.sessionid_manual
@@ -362,7 +363,7 @@ async def get_session_by_id(
 ):
     if flag == "manual":
         select_query = """
-           SELECT m.sessionid, m.severity, m.category, m.mark_as_complete, m.request_details, m.action_taken_notes,
+           SELECT m.sessionid, m.severity, m.category, m.mark_as_complete, m.request_details, m.action_taken_notes, m.phonenumber,
                   c.comment_id, c.comment, c.email,
                   a.name AS assignee_name, a.email AS assignee_email, a.status AS assignee_status
            FROM manualrecords m
@@ -372,7 +373,7 @@ async def get_session_by_id(
            """
     elif flag == "chat":
         select_query = """
-           SELECT r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript, r.action_taken_notes,
+           SELECT r.sessionid, r.severity, r.category, r.mark_as_complete, r.chatsummary, r.chattranscript, r.action_taken_notes, r.phonenumber,
                   c.comment_id, c.comment, c.email,
                   a.name AS assignee_name, a.email AS assignee_email, a.status AS assignee_status
            FROM chatrecords r
@@ -397,6 +398,7 @@ async def get_session_by_id(
                 "sessionid": record["sessionid"],
                 "severity": record["severity"],
                 "category": record["category"],
+                "phonenumber": record["phonenumber"],
                 "mark_as_complete": record["mark_as_complete"],
                 "action_taken_notes": record["action_taken_notes"],
                 "request_details": record["request_details"],
@@ -428,6 +430,7 @@ async def get_session_by_id(
                 "sessionid": record["sessionid"],
                 "severity": record["severity"],
                 "category": record["category"],
+                "phonenumber": record["phonenumber"],
                 "mark_as_complete": record["mark_as_complete"],
                 "action_taken_notes": record["action_taken_notes"],
                 "chatsummary": record["chatsummary"],
@@ -439,7 +442,6 @@ async def get_session_by_id(
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @app.post("/session/{sid}/comments")
@@ -659,8 +661,8 @@ async def add_manual_record(
         record: ManualRecordInput, auth_result: str = Security(auth.verify)
 ):
     insert_query = """
-    INSERT INTO manualrecords (name, emailorphonenumber, severity, category, request_details, datetime)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO manualrecords (name, emailorphonenumber, severity, category, request_details, datetime, phonenumber)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     """
     try:
         conn = await get_connection()
@@ -672,6 +674,7 @@ async def add_manual_record(
             record.team,
             record.request_details,
             record.datetime,
+            record.phonenumber
         )
         await conn.close()
         return {"message": "Manual record added successfully"}
