@@ -327,19 +327,19 @@ async def get_session_data(
     """
     conditions = []
     if team:
-        conditions.append(f"category = '{team}'")
+        conditions.append(f"combined.category = '{team}'")
     else:
         conditions.append(
-            "LOWER(category) IN ('social_care', 'eip', 'cafd', 'not_enough_information')"
+            "LOWER(combined.category) IN ('social_care', 'eip', 'cafd', 'not_enough_information')"
         )
     if search:
-        conditions.append(f"name ILIKE '%{search}%'")
+        conditions.append(f"combined.name ILIKE '%{search}%'")
     if triaging_confirmed:
-        conditions.append(f"triaging_confirmed = '{triaging_confirmed}'")
+        conditions.append(f"combined.triaging_confirmed = '{triaging_confirmed}'")
     if history is not None:
-        conditions.append(f"mark_as_complete = '{history}'")
+        conditions.append(f"combined.mark_as_complete = '{history}'")
     if email:
-        conditions.append(f"emailorphonenumber = '{email}'")
+        conditions.append(f"combined.emailorphonenumber = '{email}'")
     if conditions:
         where_clause = " WHERE " + " AND ".join(conditions)
         select_query += where_clause
